@@ -1,0 +1,13 @@
+diff --git a/vendor/cybersource/rest-client-php/lib/Authentication/Jwt/JsonWebTokenHeader.php b/vendor/cybersource/rest-client-php/lib/Authentication/Jwt/JsonWebTokenHeader.php
+index 5c141b1..b15b7ac 100644
+--- a/vendor/cybersource/rest-client-php/lib/Authentication/Jwt/JsonWebTokenHeader.php
++++ b/vendor/cybersource/rest-client-php/lib/Authentication/Jwt/JsonWebTokenHeader.php
+@@ -9,7 +9,7 @@ use CyberSource\Authentication\Core\AuthException as AuthException;
+ use Firebase\JWT\JWT as JWT;
+ use CyberSource\Logging\LogFactory as LogFactory;
+ 
+-require_once 'vendor/autoload.php';
++// require_once 'vendor/autoload.php';
+ 
+ class JsonWebTokenHeader 
+ {

@@ -1,0 +1,69 @@
+system.admin_config_cybersource:
+  path: '/admin/config/cybersource'
+  defaults:
+    _controller: '\Drupal\system\Controller\SystemController::systemAdminMenuBlockPage'
+    _title: 'Cybersource Payments'
+  requirements:
+    _permission: 'access administration pages'
+ik_cybersource.settings_form:
+  path: '/admin/config/cybersource/settings'
+  defaults:
+    _title: 'Cybersource Keys and Environments'
+    _form: 'Drupal\ik_cybersource\Form\SettingsForm'
+  requirements:
+    _permission: 'administer ik_cybersource settings'
+ik_cybersource.token:
+  path: '/api/cybersource/token/{webform}'
+  defaults:
+    _controller: \Drupal\ik_cybersource\Controller\Cybersource::getFlexToken
+  methods: [GET]
+  requirements:
+    _access: 'TRUE'
+  options:
+    parameters:
+      webform:
+        type: entity:webform
+ik_cybersource.manage_templates:
+  path: '/admin/config/cybersource/templates'
+  defaults:
+    _controller: '\Drupal\ik_cybersource\Controller\IkCybersourceWebformTemplatesRouting::routeToCybersourceTemplates'
+    _title: 'Cybersource Forms'
+    manage: true
+  requirements:
+    _custom_access: '\Drupal\webform\Access\WebformAccountAccess::checkTemplatesAccess'
+    _permission: 'administer webform templates'
+ik_cybersource.webform.receipt:
+  path: '/webform/{webform}/receipt'
+  defaults:
+    _title: 'Receipt'
+    _controller: '\Drupal\ik_cybersource\Controller\IkCybersourceWebformTemplatesReceipt::webformReceipt'
+  requirements:
+    _entity_access: 'webform.view'
+  options:
+    no_cache: true
+ik_cybersource.payment.receipt:
+  path: '/payment/{payment}/receipt'
+  defaults:
+    _title: 'Receipt'
+    _controller: '\Drupal\ik_cybersource\Controller\IkCybersourceWebformTemplatesReceipt::paymentReceipt'
+  requirements:
+    _permission: 'view ik_cybersource receipts'
+  options:
+    no_cache: true
+    parameters:
+      payment:
+        type: entity:payment
+entity.payment.settings:
+  path: 'admin/structure/payment'
+  defaults:
+    _form: '\Drupal\ik_cybersource\Form\PaymentSettingsForm'
+    _title: 'Payment'
+  requirements:
+    _permission: 'administer payment'
+ik_cybersource.logging:
+  path: '/api/cybersource/logging'
+  defaults:
+    _title: 'Logging'
+    _controller: '\Drupal\ik_cybersource\Controller\CybersourceLogging::logMessage'
+  requirements:
+    _permission: 'access content'

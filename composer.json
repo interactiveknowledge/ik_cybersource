@@ -1,0 +1,21 @@
+{
+    "name": "interactiveknowledge/ik_cybersource",
+    "description": "Interactive Knowledge module that integrates CyberSource payment platform.",
+    "type": "drupal-custom-module",
+    "authors": [
+        {
+            "name": "Philip Curley",
+            "email": "philip@interactiveknowledge.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "cybersource/rest-client-php": "dev-2025-development"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/interactiveknowledge/cybersource-rest-client-php.git"
+        }
+    ]
+}

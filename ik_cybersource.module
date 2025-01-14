@@ -1,0 +1,371 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for ik_cybersource module.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
+use Drupal\ik_cybersource\Entity\Payment;
+use Drupal\webform\Entity\Webform;
+use Drupal\webform\Utility\WebformMailHelper;
+use Drupal\webform\WebformSubmissionInterface;
+
+// Cron functions.
+include 'inc/ik_cybersource.cron.inc';
+
+/**
+ * Implements hook_theme().
+ */
+function ik_cybersource_theme() {
+  return [
+    'payment' => [
+      'render element' => 'elements',
+    ],
+  ];
+}
+
+/**
+ * Prepares variables for payment templates.
+ *
+ * Default template: payment.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - elements: An associative array containing the payment information and any
+ *     fields attached to the entity.
+ *   - attributes: HTML attributes for the containing element.
+ */
+function template_preprocess_payment(array &$variables) {
+  foreach (Element::children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+
+  $variables['payment'] = $variables['elements']['#payment'];
+}
+
+/**
+ * Implements hook_entity_type_insert().
+ *
+ * Link webform_submission to the payment entity.
+ */
+function ik_cybersource_webform_submission_insert(WebformSubmissionInterface $entity) {
+  if (!is_null($entity->getData()['payment_entity'])) {
+    $payment = Payment::load($entity->getData()['payment_entity']);
+    $payment->set('submission', $entity->id());
+    $payment->save();
+  }
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK().
+ */
+function ik_cybersource_theme_suggestions_webform_confirmation(array $variables) {
+  if (in_array('Cybersource', $variables['webform']->get('categories'))) {
+    return ['webform_confirmation__cybersource__receipt'];
+  }
+}
+
+/**
+ * Implements hook_entity_insert().
+ *
+ * Copy the Webform alias updater and add a '/receipt' route.
+ */
+function ik_cybersource_webform_insert($entity) {
+  if (in_array('Cybersource', $entity->get('categories'))) {
+    ik_cybersource_add_receipt_alias($entity);
+  }
+}
+
+/**
+ * Implements hook_entity_update().
+ *
+ * Copy the Webform alias updater and add a '/receipt' route.
+ */
+function ik_cybersource_webform_update($entity) {
+  if (in_array('Cybersource', $entity->get('categories'))) {
+    ik_cybersource_add_receipt_alias($entity);
+  }
+}
+
+/**
+ * Implements_webform_submission_form_alter().
+ */
+function ik_cybersource_webform_submission_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+  $webform = Webform::load($form['#webform_id']);
+  $handlers = $webform->get('handlers');
+
+  // Only Cybersource payment forms.
+  if (isset($handlers['ik_cybersource_webform_handler'])) {
+    $config = \Drupal::service('config.factory')->get('ik_cybersource.settings');
+    $environment = $config->get('global')['environment'];
+    $uuid = $webform->get('uuid');
+
+    if ($config->get($uuid . '_environment') !== TRUE) {
+      $environment = $config->get($uuid . '_environment');
+    }
+
+    if ($environment === 'development') {
+      $form['#attached']['library'][] = 'ik_cybersource/flex-dev';
+    }
+    else {
+      $form['#attached']['library'][] = 'ik_cybersource/flex';
+    }
+
+    $form['#attached']['drupalSettings']['ik_cybersource']['webform'] = $form['#webform_id'];
+    $form['#attached']['drupalSettings']['ik_cybersource']['logging'] = (bool) $config->get('global')['logging'] ?? FALSE;
+  }
+}
+
+/**
+ * Implements hook_mail().
+ *
+ * Copied from the Webform module,
+ * including using some of the utility functions.
+ */
+function ik_cybersource_mail($key, &$message, $params) {
+  // Never send emails when using devel generate to create
+  // 1000's of submissions.
+  if (\Drupal::moduleHandler()->moduleExists('devel_generate')) {
+    /** @var \Drupal\devel_generate\DevelGeneratePluginManager $devel_generate */
+    $devel_generate = \Drupal::service('plugin.manager.develgenerate');
+    $definition = $devel_generate->getDefinition('webform_submission', FALSE);
+    if ($definition) {
+      $class = $definition['class'];
+      if ($class::isGeneratingSubmissions()) {
+        $message['send'] = FALSE;
+      }
+    }
+  }
+
+  // Set default parameters.
+  $params += [
+    'from_mail' => '',
+    'from_name' => '',
+    'cc_mail' => '',
+    'bcc_mail' => '',
+    'reply_to' => '',
+    'return_path' => '',
+    'sender_mail' => '',
+    'sender_name' => '',
+  ];
+
+  $message['subject'] = $params['subject'];
+  $message['body'][] = $params['body'];
+
+  // Set the header 'From'.
+  // Using the 'from_mail' so that the webform's email from value is used
+  // instead of site's email address.
+  // @see: \Drupal\Core\Mail\MailManager::mail.
+  if (!empty($params['from_mail'])) {
+    // 'From name' is only used when the 'From mail' contains a single
+    // email address.
+    $from = (!empty($params['from_name']) && strpos($params['from_mail'], ',') === FALSE)
+      ? WebformMailHelper::formatAddress($params['from_mail'], $params['from_name'])
+      : $params['from_mail'];
+    $message['from'] = $message['headers']['From'] = $from;
+  }
+
+  // Set header 'Cc'.
+  if (!empty($params['cc_mail'])) {
+    $message['headers']['Cc'] = $params['cc_mail'];
+  }
+
+  // Set header 'Bcc'.
+  if (!empty($params['bcc_mail'])) {
+    $message['headers']['Bcc'] = $params['bcc_mail'];
+  }
+
+  // Set header 'Reply-to'.
+  $reply_to = $params['reply_to'] ?: '';
+  if (empty($reply_to) && !empty($params['from_mail'])) {
+    $reply_to = $message['from'];
+  }
+  if ($reply_to) {
+    $message['reply-to'] = $message['headers']['Reply-to'] = $reply_to;
+  }
+
+  // Set header 'Return-Path' which only supports a single email address and the
+  // 'from_mail' may contain multiple comma delimited email addresses.
+  $return_path = $params['return_path'] ?: $params['from_mail'] ?: '';
+  if ($return_path) {
+    $return_path = explode(',', $return_path);
+    $message['headers']['Sender'] = $message['headers']['Return-Path'] = $return_path[0];
+  }
+
+  // Set header 'Sender'.
+  $sender_mail = $params['sender_mail'] ?: '';
+  $sender_name = $params['sender_name'] ?: $params['from_name'] ?: '';
+  if ($sender_mail) {
+    $message['headers']['Sender'] = WebformMailHelper::formatAddress($sender_mail, $sender_name);
+  }
+}
+
+/**
+ * Adds an alias URL for the receipt page of cybersource forms.
+ *
+ * @param \Drupal\webform\Entity\Webform $entity
+ *   The webform entity.
+ */
+function ik_cybersource_add_receipt_alias(Webform $entity) {
+  $page_submit_path = $entity->getSetting('page_submit_path');
+  $default_page_base_path = \Drupal::config('webform.settings')->get('settings.default_page_base_path');
+
+  if (empty($page_submit_path) && empty($default_page_base_path)) {
+    return;
+  }
+
+  $path_base_alias = ($page_submit_path ?: $default_page_base_path . '/' . str_replace('_', '-', $entity->id()));
+  $path_suffix = '/receipt';
+  $path_source = '/webform/' . $entity->id() . $path_suffix;
+  $path_alias = $path_base_alias . $path_suffix;
+  $langcode = 'en';
+  // $this->updatePath($path_source, $path_alias, 'en');
+  $path_alias_storage = \Drupal::entityTypeManager()->getStorage('path_alias');
+
+  // Check if the path alias is already setup.
+  $path_aliases = $path_alias_storage->loadByProperties(['path' => $path_source, 'langcode' => $langcode]);
+  if (count($path_aliases) > 0) {
+    /** @var \Drupal\path_alias\PathAliasInterface $path_alias_current */
+    $path_alias_current = reset($path_aliases);
+    if ($path_alias_current->getAlias() === $path_alias) {
+      return;
+    }
+  }
+  else {
+    $path_alias_current = $path_alias_storage->create([
+      'path' => $path_source,
+      'langcode' => $langcode,
+    ]);
+  }
+
+  /** @var \Drupal\path_alias\PathAliasInterface $path_alias_current */
+  $path_alias_current->setAlias($path_alias);
+  $path_alias_current->save();
+}
+
+/**
+ * Implements hook_webform_element_alter().
+ */
+function ik_cybersource_webform_element_alter(array &$element, FormStateInterface $form_state, array $context) {
+  if ($element['#type'] === 'webform_table' && $element['#webform_key'] === 'gala') {
+    // Attach helpful JS library.
+    $element['#attached']['library'][] = 'ik_cybersource/gala-table';
+  }
+  elseif (
+    $element['#type'] === 'select' &&
+    $element['#title'] === 'Country/Region'
+  ) {
+    // Move United States to the top.
+    $options = $element['#options'];
+    $united_states = $options['US'];
+    unset($options['US']);
+    $options = ['US' => $united_states] + $options;
+    $element['#options'] = $options;
+  }
+}
+
+/**
+ * Create the next recurring time. +1 month.
+ *
+ * @param int $timestamp
+ *   Current timestamp.
+ *
+ * @return string
+ *   the next recurring date time string for database storage.
+ */
+function ik_cybersource_get_next_recurring_payment_date(int $timestamp) {
+  $nextRecurringTime = strtotime('+1 month', $timestamp);
+  $format = 'Y-m-d\TH:i:s';
+  $nextRecurringDateTimeFormat = date($format, $nextRecurringTime);
+  return $nextRecurringDateTimeFormat;
+}
+
+/**
+ * Takes CyberSource code and returns the human-string card type.
+ *
+ * @param string $code
+ *   The CyberSource card type code.
+ *
+ * @return string
+ *   The human-readable card type.
+ */
+function ik_cybersource_card_type_number_to_string(string $code) {
+  $codes = [
+    '001' => 'Visa',
+    '002' => 'Mastercard',
+    '003' => 'American Express',
+    '004' => 'Discover',
+    '005' => 'Diners Club',
+    '006' => 'Carte Blanche',
+    '007' => 'JCB',
+    '014' => 'Enroute',
+    '021' => 'JAL',
+    '024' => 'Maestro',
+    '031' => 'Delta',
+    '033' => 'Visa Electron',
+    '034' => 'Dankort',
+    '036' => 'Cartes Bancaires',
+    '037' => 'Carta Si',
+    '039' => 'Encoded account number',
+    '040' => 'UATP',
+    '042' => 'Maestro',
+    '050' => 'Hipercard',
+    '051' => 'Aura',
+    '054' => 'Elo',
+    '062' => 'China UnionPay',
+  ];
+
+  return $codes[$code];
+}
+
+/**
+ * Format amounts which may contain symbols like commas.
+ *
+ * @param int|float|string $form_amount
+ *   The amount to format.
+ *
+ * @return string
+ *   The formatted amount.
+ */
+function ik_cybersource_format_amount($form_amount) {
+  $new_amount = (string) $form_amount;
+  $form_amount_cents = '00';
+
+  if (is_null($form_amount) || empty($form_amount)) {
+    return 0;
+  }
+
+  $form_amount_array = explode('.', (string) $form_amount);
+
+  // Malformed currency amount: multiple decimals.
+  if (count($form_amount_array) > 2) {
+    return 0;
+  }
+  elseif (count($form_amount_array) === 2) {
+    $form_amount_cents = $form_amount_array[1];
+
+    // Malformed cents: not equal to 2.
+    if ($form_amount_cents != '0' && strlen($form_amount_cents) !== 2) {
+      return 0;
+    }
+    elseif ($form_amount_cents === '0') {
+      $form_amount_cents = '00';
+    }
+  }
+
+  $form_amount_dollars = $form_amount_array[0];
+
+  if (empty($form_amount_dollars)) {
+    return 0;
+  }
+
+  // Strip any commas.
+  preg_match_all('/\d+/', $form_amount_dollars, $form_amount_dollars_array);
+  $amount_dollars = implode('', $form_amount_dollars_array[0]);
+
+  $new_amount = $amount_dollars . '.' . $form_amount_cents;
+
+  return (string) $new_amount;
+}

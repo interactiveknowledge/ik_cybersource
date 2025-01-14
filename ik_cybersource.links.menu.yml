@@ -1,0 +1,27 @@
+system.admin_config_cybersource:
+  title: 'Cybersource Payments Platform'
+  route_name: system.admin_config_cybersource
+  parent: system.admin_config
+  description: 'Settings specific to the website integration to Cybersource.'
+ik_cybersource.settings_form:
+  title: 'Cybersource Form Settings'
+  description: 'Configure form keys, environment information, and other form options.'
+  parent: system.admin_config_cybersource
+  route_name: ik_cybersource.settings_form
+  weight: 10
+ik_cybersource.templates:
+  title: 'Cybersource Forms'
+  description: ''
+  parent: system.admin_config_cybersource
+  route_name: ik_cybersource.manage_templates
+  weight: 10
+entity.payment.settings:
+  title: Payment
+  description: Configure a Payment entity type
+  route_name:  entity.payment.settings
+  parent: system.admin_structure
+# entity.payment.collection:
+#   title: Payments
+#   description: List of payments
+#   route_name: entity.payment.collection
+#   parent: system.admin_content

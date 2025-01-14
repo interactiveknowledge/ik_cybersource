@@ -1,0 +1,15 @@
+global:
+  auth: 'JWT'
+  development:
+    certificate:
+      fid: ''
+    organization_id: ''
+    certificate_password: ''
+  environment: 'development'
+  production:
+    certificate:
+      fid: ''
+    organization_id: ''
+    certificate_password: ''
+  receipt_availability: 7
+  receipt_sender: null

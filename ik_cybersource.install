@@ -1,0 +1,68 @@
+<?php
+
+/**
+ * @file
+ * Install/uninstall module hooks for ik_cybersource module.
+ */
+
+use Drupal\Core\StreamWrapper\StreamWrapperInterface;
+
+/**
+ * Implements hook_install().
+ */
+function ik_cybersource_install() {
+  // Check if the file_private_path is set.
+  $file_private_path = \Drupal::config('system.file')->get('private');
+
+  if (empty($file_private_path)) {
+    // Set message.
+    \Drupal::messenger()->addWarning(t('The private file path is not set. Please set the private file path in the file system settings.'));
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function ik_cybersource_uninstall() {
+  Drupal::configFactory()->getEditable('ik_cybersource.settings')->delete();
+
+  $webform_ids = ['template_donation'];
+  foreach ($webform_ids as $webform_id) {
+    $webform_entity = \Drupal::entityTypeManager()->getStorage('webform')->load($webform_id);
+    if (!is_null($webform_entity)) {
+      $webform_entity->delete();
+    }
+  }
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function ik_cybersource_requirements($phase) {
+  $requirements = [];
+  switch ($phase) {
+    case 'runtime':
+      /** @var \Drupal\Core\StreamWrapper\StreamWrapperManagerInterface $stream_wrapper_manager */
+      $stream_wrapper_manager = \Drupal::service('stream_wrapper_manager');
+      $scheme_options = $stream_wrapper_manager->getNames(StreamWrapperInterface::WRITE_VISIBLE);
+      if (!isset($scheme_options['private'])) {
+        $requirements['ik_cybersource_private_path'] = [
+          'title' => t('IK Cybersource: Private file path'),
+          'value' => t('Not set'),
+          'severity' => REQUIREMENT_ERROR,
+          'description' => t('The private file path is not set. IK Cybersource requires usage of Drupal private files in order to protect your certificates. Please set the private file path in the file system settings.'),
+        ];
+      }
+      else {
+        $requirements['ik_cybersource_private_path'] = [
+          'title' => t('IK Cybersource: Private file path'),
+          'value' => t('Set'),
+          'severity' => REQUIREMENT_OK,
+          'description' => t('The private file path is set.'),
+        ];
+      }
+      break;
+  }
+
+  return $requirements;
+}

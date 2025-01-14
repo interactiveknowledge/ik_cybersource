@@ -1,0 +1,39 @@
+flex:
+  version: 2.0.0
+  js:
+    js/flex.js: {}
+  dependencies:
+    - core/drupalSettings
+    - core/once
+    - ik_cybersource/flex-microform
+
+flex-dev:
+  version: 2.0.0
+  js:
+    js/flex.js: {}
+  dependencies:
+    - core/drupalSettings
+    - core/once
+    - ik_cybersource/flex-microform-dev
+
+flex-microform:
+  version: 2.0
+  js:
+    https://flex.cybersource.com/microform/bundle/v2/flex-microform.min.js: { minified: true, external: true }
+
+flex-microform-dev:
+  version: 2.0
+  js:
+    https://testflex.cybersource.com/microform/bundle/v2/flex-microform.min.js: { minified: true, external: true }
+
+gala-table:
+  version: 1.0.9
+  js:
+    js/gala-table.js: {}
+  dependencies:
+    - core/drupalSettings
+
+settingsForm:
+  version: 1.0.0
+  js:
+    js/settingsForm.js: {}

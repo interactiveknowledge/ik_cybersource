@@ -1,0 +1,9 @@
+name: 'IK Cybersource'
+type: module
+description: Base module Drupal integration with Cybersource payment processor. Manage Cybersource credentials and site settings.
+package: Payments
+core_version_requirement: ^10 || ^11
+dependencies:
+  - webform
+  - webform_templates
+  - webform_ui
