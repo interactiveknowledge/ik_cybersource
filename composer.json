@@ -10,7 +10,7 @@
     ],
     "minimum-stability": "stable",
     "require": {
-        "cybersource/rest-client-php": "dev-2025-development"
+        "cybersource/rest-client-php": "0.0.57"
     },
     "repositories": [
         {
