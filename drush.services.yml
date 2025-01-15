@@ -1,6 +1,6 @@
 services:
   ik_cybersource.commands:
     class: Drupal\ik_cybersource\Commands\IkCybersourceCommands
-    arguments: ['@entity_type.manager']
+    arguments: ['@entity_type.manager', '@ik_cybersource.cybersource_client']
     tags:
       - { name: drush.command }

@@ -30,6 +30,7 @@ use CyberSource\Model\Ptsv2paymentsOrderInformationAmountDetails;
 use CyberSource\Model\Ptsv2paymentsOrderInformationBillTo;
 use CyberSource\Model\Ptsv2paymentsOrderInformationShipTo;
 use CyberSource\Model\Ptsv2paymentsPaymentInformation;
+use CyberSource\Model\Ptsv2paymentsPaymentInformationCard;
 use CyberSource\Model\Ptsv2paymentsPaymentInformationCustomer;
 use CyberSource\Model\Ptsv2paymentsProcessingInformation;
 use CyberSource\Model\Ptsv2paymentsProcessingInformationAuthorizationOptions;
@@ -555,11 +556,15 @@ class CybersourceClient {
   /**
    * Creates processing options object.
    *
+   * @param array $data
+   *   The arrayed data.
+   *   See \CyberSource\Model\Ptsv2paymentsProcessingInformation::_construct().
+   *
    * @return \CyberSource\Model\Ptsv2paymentsProcessingInformation
    *   The processing information object.
    */
-  public function createProcessingOptions() {
-    return new Ptsv2paymentsProcessingInformation([]);
+  public function createProcessingOptions(array $data = []) {
+    return new Ptsv2paymentsProcessingInformation($data);
   }
 
   /**
@@ -630,6 +635,29 @@ class CybersourceClient {
    */
   public function createPaymentInformation(array $data) {
     return new Ptsv2paymentsPaymentInformation($data);
+  }
+
+  /**
+   * Undocumented function.
+   *
+   * @param string $number
+   *   The card number.
+   * @param string $expirationMonth
+   *   The expiration month (MM).
+   * @param string $expirationYear
+   *   The expiration year (YYYY).
+   *
+   * @return \CyberSource\Model\Ptsv2paymentsPaymentInformationCard
+   *   The card object.
+   */
+  public function createPaymentInformationCard(string $number, string $expirationMonth, string $expirationYear) {
+    $card = new Ptsv2paymentsPaymentInformationCard([
+      'number' => $number,
+      'expirationMonth' => $expirationMonth,
+      'expirationYear' => $expirationYear,
+    ]);
+
+    return $card;
   }
 
   /**
