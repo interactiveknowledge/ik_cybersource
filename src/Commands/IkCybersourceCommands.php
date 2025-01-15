@@ -86,6 +86,14 @@ class IkCybersourceCommands extends DrushCommands {
       $this->testTransactionAmount('1', 'SUCCESS');
       $this->testTransactionAmount('-1', 'FAILURE');
       $this->testTransactionAmount('100000000000', 'FAILURE');
+
+      $this->testTransactionCardDetails('4111111111111111', '12', '2031', 'SUCCESS');
+      $this->testTransactionCardDetails('42423482938483873', '12', '2031', 'FAILURE');
+      $this->testTransactionCardDetails('4111111111111111', '13', '2031', 'FAILURE');
+      $this->testTransactionCardDetails('4111111111111111', '13', '1998', 'FAILURE');
+      $this->testTransactionCardDetails('4111111111111112', '13', '1998', 'FAILURE');
+      $this->testTransactionCardDetails('412345678912345678914', '13', '1998', 'FAILURE');
+
     }
     else {
       $this->logger()->warning('The Cybersource Client is not ready.');
@@ -216,8 +224,121 @@ class IkCybersourceCommands extends DrushCommands {
       ]));
     }
     else {
-      $this->logger()->error($this->t('Transaction with amount @amount gave unexpected status.', [
+      $this->logger()->error($this->t('Transaction with amount @amount returned unexpected status.', [
         '@amount' => $amount,
+      ]));
+    }
+  }
+
+  /**
+   * Test a transaction with a payment.
+   *
+   * @param string $cardNumber
+   *   The card number.
+   * @param string $expirationMonth
+   *   The expiration month.
+   * @param string $expirationYear
+   *   The expiration year.
+   * @param string $expectedStatus
+   *   The expected status.
+   */
+  protected function testTransactionCardDetails(
+    string $cardNumber = '4111111111111111',
+    string $expirationMonth = '12',
+    string $expirationYear = '2031',
+    string $expectedStatus = 'SUCCESS'
+  ) {
+
+    if ($cardNumber !== '4111111111111111') {
+      $this->logger()->success(
+        $this->t('Testing transaction with card number: @cardNumber', [
+          '@cardNumber' => $cardNumber,
+        ])
+      );
+    }
+    elseif ($expirationMonth !== '12') {
+      $this->logger()->success(
+        $this->t('Testing transaction with expiration month: @expirationMonth', [
+          '@expirationMonth' => $expirationMonth,
+        ])
+      );
+    }
+    elseif ($expirationYear !== '2031') {
+      $this->logger()->success(
+        $this->t('Testing transaction with expiration year: @expirationYear', [
+          '@expirationYear' => $expirationYear,
+        ])
+      );
+    }
+
+    $processingOptions = $this->cybersourceClient->createProcessingOptions([
+      'capture' => TRUE,
+    ]);
+
+    $billTo = [
+      'firstName' => 'John',
+      'lastName' => 'Doe',
+      'company' => 'JD Inc.',
+      'address1' => '123 Main St.',
+      'address2' => 'Ste. A',
+      'locality' => 'Charlotte',
+      'administrativeArea' => 'NC',
+      'postalCode' => '28202',
+      'country' => 'United States',
+      'email' => 'developers@interactiveknowledge.com',
+      'phoneNumber' => '9876543210',
+    ];
+
+    $orderInfoBilling = $this->cybersourceClient->createBillingInformation($billTo);
+
+    $number1 = rand(1000, 9999);
+    $number2 = rand(1000, 9999);
+    $code = 'TESTING-' . $number1 . '-' . $number2;
+
+    $clientReferenceInformation = $this->cybersourceClient->createClientReferenceInformation([
+      'code' => $code,
+    ]);
+
+    $amountDetails = $this->cybersourceClient->createOrderInformationAmountDetails([
+      'totalAmount' => '1.00',
+      'currency' => 'USD',
+    ]);
+
+    $orderInformationArr = [
+      'amountDetails' => $amountDetails,
+      'billTo' => $orderInfoBilling,
+    ];
+
+    $orderInformation = $this->cybersourceClient->createOrderInformation($orderInformationArr);
+
+    $cardNumber = $cardNumber;
+    $expirationMonth = $expirationMonth;
+    $expirationYear = $expirationYear;
+    $paymentCard = $this->cybersourceClient->createPaymentInformationCard($cardNumber, $expirationMonth, $expirationYear);
+
+    $paymentInformation = $this->cybersourceClient->createPaymentInformation([
+      'card' => $paymentCard,
+    ]);
+
+    $requestParameters = [
+      'clientReferenceInformation' => $clientReferenceInformation,
+      'orderInformation' => $orderInformation,
+      'paymentInformation' => $paymentInformation,
+      'processingInformation' => $processingOptions,
+    ];
+
+    $response = $this->makePayment($requestParameters);
+
+    $status = $this->analyzeResponse($response);
+
+    if ($status === $expectedStatus) {
+      $this->logger()->success($this->t('Transaction with card number @cardNumber behaved as expected.', [
+        '@cardNumber' => $cardNumber,
+      ]));
+    }
+    else {
+      $this->logger()->error($this->t('Transaction with card number @cardNumber returned unexpected status.', [
+        '@cardNumber' => $cardNumber,
       ]));
     }
   }
