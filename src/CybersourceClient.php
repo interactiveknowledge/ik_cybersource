@@ -1034,7 +1034,7 @@ class CybersourceClient {
     $merchantConfiguration->setKeyAlias($this->merchantId);
     $merchantConfiguration->setKeyFileName($this->certificateFile);
     $merchantConfiguration->setKeysDirectory($this->certificateDirectory);
-    $merchantConfiguration->setKeyPassword('hz9ZHKvp2FAcoDAs*ZV');
+    $merchantConfiguration->setKeyPassword($this->certificatePassword);
     $merchantConfiguration->setUseMetaKey(FALSE);
     $merchantConfiguration->setRunEnvironment($this->requestHost);
     $merchantConfiguration->setIntermediateHost($this->requestHost);
