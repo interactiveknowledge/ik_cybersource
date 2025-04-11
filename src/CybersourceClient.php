@@ -133,6 +133,16 @@ class CybersourceClient {
   }
 
   /**
+   * Set the certificate password.
+   *
+   * @param string $certificatePassword
+   *   The certificate password.
+   */
+  public function setCertificatePassword(string $certificatePassword): void {
+    $this->certificatePassword = $certificatePassword;
+  }
+
+  /**
    * Set the payload.
    *
    * @param mixed $payload
@@ -214,6 +224,13 @@ class CybersourceClient {
    * @var mixed
    */
   protected $certificateFile;
+
+  /**
+   * The certificate password.
+   *
+   * @var string
+   */
+  protected $certificatePassword;
 
   /**
    * The payload.
@@ -298,6 +315,7 @@ class CybersourceClient {
 
           $this->setCertificateDirectory($realpath . DIRECTORY_SEPARATOR);
           $this->setCertificateFile(explode('.', $this->fileSystem->basename($uri))[0]);
+          $this->setCertificatePassword($global[$global['environment']]['certificate_password']);
 
           $ready = TRUE;
         }
@@ -795,6 +813,7 @@ class CybersourceClient {
     $realpath = $this->fileSystem->realpath($dir);
     $this->setCertificateDirectory($realpath . DIRECTORY_SEPARATOR);
     $this->setCertificateFile(explode('.', $this->fileSystem->basename($uri))[0]);
+    $this->setCertificatePassword($environmentalSettings['certificate_password']);
 
     $this->apiClient->getConfig()->setHost($this->requestHost);
 
